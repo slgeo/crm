@@ -1,37 +1,24 @@
-name: Deploy (OrangePi self-hosted)
-
-on:
-  push:
-    branches: ["main"]
-
-concurrency:
-  group: deploy-main
-  cancel-in-progress: true
-
 jobs:
   deploy:
     runs-on: [self-hosted, linux, ARM64, orangepi, crm, prod]
+    timeout-minutes: 20
 
     steps:
-      - name: Checkout (optional)
-        uses: actions/checkout@v4
-
       - name: Deploy in-place with docker compose
         shell: bash
         run: |
           set -euo pipefail
 
+          echo "Runner: $(uname -a)"
+          docker --version
+          docker compose version
+
           cd /home/orangepi/docker/crm
 
-          # Забираем изменения строго как origin/main
           git fetch --prune origin
           git reset --hard origin/main
 
-          # Если у тебя в compose есть образы из registry, можно подтянуть
           docker compose pull || true
-
-          # Пересобрать и поднять
           docker compose up -d --build --remove-orphans
 
-          # (опционально) показать состояние
           docker compose ps
