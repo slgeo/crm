@@ -28,7 +28,8 @@ class Client(Base):
     __tablename__ = "clients"
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    phone = Column(String)
+    phone = Column(String, nullable=False, unique=True)
+    email = Column(String, nullable=True)
 
 class Appointment(Base):
     __tablename__ = "appointments"
