@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Table
 from datetime import datetime
 from database import Base
 from sqlalchemy.orm import relationship
@@ -22,6 +22,7 @@ class Master(Base):
     default_duration = Column(Integer, default=60)  # минуты
     branch_id = Column(Integer, ForeignKey("branches.id"))
     avatar = Column(String, nullable=True)
+    services = relationship("Service", secondary="master_services", back_populates="masters")
     
 class Client(Base):
     __tablename__ = "clients"
@@ -76,5 +77,14 @@ class Service(Base):
 
     price = Column(Float, default=0)
     duration_minutes = Column(Integer, default=60)
+    masters = relationship("Master", secondary="master_services", back_populates="services")
+
+
+master_services = Table(
+    "master_services",
+    Base.metadata,
+    Column("master_id", Integer, ForeignKey("masters.id"), primary_key=True),
+    Column("service_id", Integer, ForeignKey("services.id"), primary_key=True),
+)
 
     
