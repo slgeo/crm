@@ -103,14 +103,54 @@ def get_services(db: Session = Depends(get_db)):
     return db.query(models.Service).all()
 
 
+@app.get("/api/service-categories")
+def get_service_categories(db: Session = Depends(get_db)):
+    return db.query(models.ServiceCategory).all()
+
+
+@app.post("/api/service-categories")
+def create_service_category(data: dict, db: Session = Depends(get_db)):
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Category name is required")
+
+    category = models.ServiceCategory(name=name)
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+@app.delete("/api/service-categories/{category_id}")
+def delete_service_category(category_id: int, db: Session = Depends(get_db)):
+    category = db.query(models.ServiceCategory).get(category_id)
+    if not category:
+        raise HTTPException(status_code=404)
+
+    services_count = db.query(models.Service).filter(models.Service.category_id == category_id).count()
+    if services_count:
+        raise HTTPException(status_code=400, detail="Category is used in services")
+
+    db.delete(category)
+    db.commit()
+    return {"message": "Deleted"}
+
+
 @app.post("/api/services")
 def create_service(data: dict, db: Session = Depends(get_db)):
     name = (data.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="Service name is required")
 
+    category_id = data.get("category_id")
+    if category_id:
+        category = db.query(models.ServiceCategory).get(category_id)
+        if not category:
+            raise HTTPException(status_code=400, detail="Invalid category_id")
+
     service = models.Service(
         name=name,
+        category_id=category_id,
         price=data.get("price", 0),
         duration_minutes=data.get("duration_minutes", 60)
     )
@@ -130,7 +170,14 @@ def update_service(service_id: int, data: dict, db: Session = Depends(get_db)):
     if not name:
         raise HTTPException(status_code=400, detail="Service name is required")
 
+    category_id = data.get("category_id")
+    if category_id:
+        category = db.query(models.ServiceCategory).get(category_id)
+        if not category:
+            raise HTTPException(status_code=400, detail="Invalid category_id")
+
     service.name = name
+    service.category_id = category_id
     service.price = data.get("price", 0)
     service.duration_minutes = data.get("duration_minutes", 60)
 
