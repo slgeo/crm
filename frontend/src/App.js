@@ -324,6 +324,37 @@ export default function App() {
     selectedMaster?.service_ids?.includes(service.id)
   );
 
+  const handleMasterChange = (masterId) => {
+    if (editingId) {
+      setNewEvent({ ...newEvent, master_id: masterId, service_id: "" });
+      return;
+    }
+
+    setNewEvent({
+      ...newEvent,
+      master_id: masterId,
+      service_id: "",
+      title: "",
+      price: ""
+    });
+  };
+
+  const handleServiceChange = (serviceId) => {
+    const selectedService = services.find((service) => service.id === Number(serviceId));
+
+    if (editingId) {
+      setNewEvent({ ...newEvent, service_id: serviceId });
+      return;
+    }
+
+    setNewEvent({
+      ...newEvent,
+      service_id: serviceId,
+      title: selectedService?.name || "",
+      price: selectedService?.price ?? ""
+    });
+  };
+
   const financeData = masters.map(m => {
     const masterAppointments = appointments.filter(
       a => a.master_id === m.id
@@ -533,6 +564,12 @@ export default function App() {
               <Grid container spacing={3}>
                 {services.map(service => (
                   <Grid item xs={12} md={4} key={service.id}>
+                    {(() => {
+                      const serviceMasters = masters.filter((master) =>
+                        master.service_ids?.includes(service.id)
+                      );
+
+                      return (
                     <Card
                       sx={{ cursor:"pointer" }}
                       onClick={() => {
@@ -558,6 +595,22 @@ export default function App() {
                           <Typography variant="body2" color="text.secondary">
                             Длительность: {service.duration_minutes || 60} мин
                           </Typography>
+                          <Box sx={{ mt: 1 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                              Мастера:
+                            </Typography>
+                            {serviceMasters.length ? (
+                              serviceMasters.map((master) => (
+                                <Typography key={master.id} variant="body2" color="text.secondary">
+                                  • {master.name}
+                                </Typography>
+                              ))
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                Нет назначенных мастеров
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
 
                         <IconButton
@@ -570,6 +623,8 @@ export default function App() {
                         </IconButton>
                       </CardContent>
                     </Card>
+                      );
+                    })()}
                   </Grid>
                 ))}
               </Grid>
@@ -718,6 +773,7 @@ export default function App() {
             <TextField fullWidth margin="dense" label="Название"
               value={newEvent.title}
               onChange={(e)=>setNewEvent({...newEvent,title:e.target.value})}
+              InputProps={{ readOnly: !editingId }}
             />
 
             <TextField fullWidth margin="dense" type="time"
@@ -736,7 +792,7 @@ export default function App() {
               <Select
                 value={newEvent.master_id}
                 label="Мастер"
-                onChange={(e)=>setNewEvent({...newEvent,master_id:e.target.value,service_id:""})}
+                onChange={(e)=>handleMasterChange(e.target.value)}
               >
                 {masters.map(m=>(
                   <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
@@ -750,7 +806,7 @@ export default function App() {
                 <Select
                   value={newEvent.service_id}
                   label="Услуга"
-                  onChange={(e)=>setNewEvent({...newEvent,service_id:e.target.value})}
+                  onChange={(e)=>handleServiceChange(e.target.value)}
                 >
                   {selectedMasterServices.map((service)=>(
                     <MenuItem key={service.id} value={service.id}>{service.name}</MenuItem>
