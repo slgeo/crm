@@ -23,6 +23,7 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import BuildIcon from "@mui/icons-material/Build";
 import BadgeIcon from "@mui/icons-material/Badge";
 import CategoryIcon from "@mui/icons-material/Category";
+import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
 
 import {
   BarChart, Bar, XAxis, YAxis,
@@ -44,6 +45,7 @@ export default function App() {
   const [positions, setPositions] = useState([]);
   const [services, setServices] = useState([]);
   const [serviceCategories, setServiceCategories] = useState([]);
+  const [clients, setClients] = useState([]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -56,6 +58,9 @@ export default function App() {
   const [editingServiceId, setEditingServiceId] = useState(null);
   const [serviceCategoryDialogOpen, setServiceCategoryDialogOpen] = useState(false);
   const [editingServiceCategoryId, setEditingServiceCategoryId] = useState(null);
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [editingClientId, setEditingClientId] = useState(null);
+  const [clientPhoneError, setClientPhoneError] = useState("");
 
   const [newPosition, setNewPosition] = useState({
     name: "",
@@ -71,6 +76,12 @@ export default function App() {
 
   const [newServiceCategory, setNewServiceCategory] = useState({
     name: ""
+  });
+
+  const [newClient, setNewClient] = useState({
+    name: "",
+    phone: "",
+    email: ""
   });
 
   const [newMaster, setNewMaster] = useState({
@@ -90,12 +101,48 @@ export default function App() {
     time: "09:00",
     price: "",
     master_id: "",
-    service_id: ""
+    service_id: "",
+    client_name: "",
+    client_phone: ""
   });
 
   const theme = createTheme({
     palette: { mode: "light", primary: { main: "#6366f1" } }
   });
+
+
+  const formatPhoneMask = (value) => {
+    const digits = value.replace(/\D/g, "").replace(/^8/, "7").replace(/^([^7])/, "7$1").slice(0, 11);
+    const padded = digits.slice(1);
+
+    if (!digits) return "";
+
+    let formatted = "+7";
+    if (padded.length > 0) formatted += ` (${padded.slice(0, 3)}`;
+    if (padded.length >= 3) formatted += ")";
+    if (padded.length > 3) formatted += ` ${padded.slice(3, 6)}`;
+    if (padded.length > 6) formatted += `-${padded.slice(6, 8)}`;
+    if (padded.length > 8) formatted += `-${padded.slice(8, 10)}`;
+
+    return formatted;
+  };
+
+  const normalizePhone = (value) => {
+    const digits = value.replace(/\D/g, "");
+    if (!digits) return "";
+
+    if (digits.length === 11 && (digits.startsWith("7") || digits.startsWith("8"))) {
+      return `+7${digits.slice(1)}`;
+    }
+
+    if (digits.length === 10) {
+      return `+7${digits}`;
+    }
+
+    return "";
+  };
+
+  const isPhoneValid = (value) => /^\+7\d{10}$/.test(normalizePhone(value));
 
   // ---------------- LOAD ----------------
 
@@ -105,6 +152,7 @@ export default function App() {
     axios.get("/api/positions").then(r => setPositions(r.data));
     axios.get("/api/services").then(r => setServices(r.data));
     axios.get("/api/service-categories").then(r => setServiceCategories(r.data));
+    axios.get("/api/clients").then(r => setClients(r.data));
   };
 
   useEffect(() => { loadData(); }, []);
@@ -239,6 +287,59 @@ export default function App() {
       .then(() => loadData());
   };
 
+
+  // ---------------- CLIENTS CRUD ----------------
+
+  const saveClient = () => {
+    if (!isPhoneValid(newClient.phone)) {
+      setClientPhoneError("Введите корректный номер телефона");
+      return;
+    }
+
+    const payload = {
+      name: newClient.name.trim(),
+      phone: normalizePhone(newClient.phone),
+      email: newClient.email.trim()
+    };
+
+    const request = editingClientId
+      ? axios.put(`/api/clients/${editingClientId}`, payload)
+      : axios.post("/api/clients", payload);
+
+    request.then(() => {
+      setClientDialogOpen(false);
+      setEditingClientId(null);
+      setClientPhoneError("");
+      setNewClient({ name: "", phone: "", email: "" });
+      loadData();
+    });
+  };
+
+  const deleteClient = (id) => {
+    axios.delete(`/api/clients/${id}`).then(() => loadData());
+  };
+
+  const handleEventClientPhoneChange = (value) => {
+    const masked = formatPhoneMask(value);
+    setNewEvent({ ...newEvent, client_phone: masked });
+
+    if (!isPhoneValid(masked)) {
+      return;
+    }
+
+    axios
+      .get("/api/clients/find-by-phone", { params: { phone: normalizePhone(masked) } })
+      .then((response) => {
+        if (response.data) {
+          setNewEvent((prev) => ({
+            ...prev,
+            client_phone: masked,
+            client_name: response.data.name || prev.client_name
+          }));
+        }
+      });
+  };
+
   // ---------------- EVENTS ----------------
 
   const handleDateClick = (info) => {
@@ -254,7 +355,9 @@ export default function App() {
       time: `${hours}:${minutes}`,
       price: "",
       master_id: info.resource?.id || "",
-      service_id: ""
+      service_id: "",
+      client_name: "",
+      client_phone: ""
     });
 
     setDialogOpen(true);
@@ -270,13 +373,17 @@ export default function App() {
 
     setEditingId(event.id);
 
+    const eventClient = clients.find((client) => client.id === event.client_id);
+
     setNewEvent({
       title: event.title,
       date: event.appointment_time.slice(0,10),
       time: `${hours}:${minutes}`,
       price: event.price,
       master_id: event.master_id,
-      service_id: event.service_id || ""
+      service_id: event.service_id || "",
+      client_name: eventClient?.name || "",
+      client_phone: eventClient?.phone ? formatPhoneMask(eventClient.phone) : ""
     });
 
     setDialogOpen(true);
@@ -289,7 +396,9 @@ export default function App() {
       price: parseFloat(newEvent.price) || 0,
       datetime: `${newEvent.date}T${newEvent.time}:00`,
       master_id: newEvent.master_id,
-      service_id: newEvent.service_id || null
+      service_id: newEvent.service_id || null,
+      client_name: newEvent.client_name,
+      client_phone: newEvent.client_phone ? normalizePhone(newEvent.client_phone) : null
     };
 
     if (editingId) {
@@ -456,6 +565,13 @@ export default function App() {
                     {open && <ListItemText primary="Мастера"/>}
                   </ListItemButton>
                 </ListItem>
+
+                <ListItem disablePadding sx={{ pl: open ? 4 : 1 }}>
+                  <ListItemButton selected={page==="clients"} onClick={()=>setPage("clients")}>
+                    <PersonAddAlt1Icon sx={{ mr: open?2:"auto" }}/>
+                    {open && <ListItemText primary="Клиенты"/>}
+                  </ListItemButton>
+                </ListItem>
               </>
             )}
 
@@ -601,9 +717,14 @@ export default function App() {
                             </Typography>
                             {serviceMasters.length ? (
                               serviceMasters.map((master) => (
-                                <Typography key={master.id} variant="body2" color="text.secondary">
-                                  • {master.name}
-                                </Typography>
+                                <Box key={master.id} sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
+                                  <Avatar src={master.avatar} sx={{ width: 20, height: 20, bgcolor: master.color, fontSize: 12 }}>
+                                    {master.name?.[0]}
+                                  </Avatar>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {master.name}
+                                  </Typography>
+                                </Box>
                               ))
                             ) : (
                               <Typography variant="body2" color="text.secondary">
@@ -625,6 +746,61 @@ export default function App() {
                     </Card>
                       );
                     })()}
+                  </Grid>
+                ))}
+              </Grid>
+            </>
+          )}
+
+
+          {page==="clients" && (
+            <>
+              <Button
+                variant="contained"
+                sx={{ mb:2 }}
+                onClick={() => {
+                  setEditingClientId(null);
+                  setClientPhoneError("");
+                  setNewClient({ name: "", phone: "", email: "" });
+                  setClientDialogOpen(true);
+                }}
+              >
+                Добавить клиента
+              </Button>
+
+              <Grid container spacing={3}>
+                {clients.map((client) => (
+                  <Grid item xs={12} md={4} key={client.id}>
+                    <Card
+                      sx={{ cursor:"pointer" }}
+                      onClick={() => {
+                        setEditingClientId(client.id);
+                        setClientPhoneError("");
+                        setNewClient({
+                          name: client.name || "",
+                          phone: formatPhoneMask(client.phone || ""),
+                          email: client.email || ""
+                        });
+                        setClientDialogOpen(true);
+                      }}
+                    >
+                      <CardContent sx={{ display:"flex", alignItems:"flex-start", gap:2 }}>
+                        <Box sx={{ flexGrow:1 }}>
+                          <Typography variant="h6">{client.name || "Без имени"}</Typography>
+                          <Typography variant="body2">{formatPhoneMask(client.phone || "")}</Typography>
+                          <Typography variant="body2" color="text.secondary">{client.email || "Без email"}</Typography>
+                        </Box>
+
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteClient(client.id);
+                          }}
+                        >
+                          <DeleteIcon/>
+                        </IconButton>
+                      </CardContent>
+                    </Card>
                   </Grid>
                 ))}
               </Grid>
@@ -776,6 +952,19 @@ export default function App() {
               InputProps={{ readOnly: !editingId }}
             />
 
+            <TextField fullWidth margin="dense"
+              label="Имя клиента"
+              value={newEvent.client_name}
+              onChange={(e)=>setNewEvent({...newEvent,client_name:e.target.value})}
+            />
+
+            <TextField fullWidth margin="dense"
+              label="Телефон клиента"
+              value={newEvent.client_phone}
+              onChange={(e)=>handleEventClientPhoneChange(e.target.value)}
+              placeholder="+7 (___) ___-__-__"
+            />
+
             <TextField fullWidth margin="dense" type="time"
               value={newEvent.time}
               onChange={(e)=>setNewEvent({...newEvent,time:e.target.value})}
@@ -917,6 +1106,49 @@ export default function App() {
         </Dialog>
 
 
+
+
+        {/* CLIENT DIALOG */}
+        <Dialog open={clientDialogOpen} onClose={()=>{setClientDialogOpen(false); setEditingClientId(null);}}>
+          <DialogTitle>{editingClientId ? "Редактирование клиента" : "Новый клиент"}</DialogTitle>
+
+          <DialogContent>
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Имя"
+              value={newClient.name}
+              onChange={(e)=>setNewClient({...newClient,name:e.target.value})}
+            />
+
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Телефон"
+              required
+              value={newClient.phone}
+              error={Boolean(clientPhoneError)}
+              helperText={clientPhoneError || "Формат: +7 (999) 999-99-99"}
+              onChange={(e)=>{
+                setClientPhoneError("");
+                setNewClient({...newClient,phone:formatPhoneMask(e.target.value)});
+              }}
+            />
+
+            <TextField
+              fullWidth
+              margin="dense"
+              label="E-mail"
+              value={newClient.email}
+              onChange={(e)=>setNewClient({...newClient,email:e.target.value})}
+            />
+          </DialogContent>
+
+          <DialogActions>
+            <Button onClick={()=>{setClientDialogOpen(false); setEditingClientId(null);}}>Отмена</Button>
+            <Button onClick={saveClient} variant="contained">Сохранить</Button>
+          </DialogActions>
+        </Dialog>
 
         {/* SERVICE DIALOG */}
         <Dialog open={serviceDialogOpen} onClose={() => setServiceDialogOpen(false)}>
