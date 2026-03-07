@@ -76,10 +76,12 @@ export default function App() {
   const [newMaster, setNewMaster] = useState({
     name: "",
     phone: "",
+    email: "",
     position: "",
     percent: 40,
     color: "#6366f1",
-    avatar: ""
+    avatar: "",
+    service_ids: []
   });
 
   const [newEvent, setNewEvent] = useState({
@@ -87,7 +89,8 @@ export default function App() {
     date: "",
     time: "09:00",
     price: "",
-    master_id: ""
+    master_id: "",
+    service_id: ""
   });
 
   const theme = createTheme({
@@ -134,10 +137,12 @@ export default function App() {
     setNewMaster({
       name: "",
       phone: "",
+      email: "",
       position: "",
       percent: 40,
       color: "#6366f1",
-      avatar: ""
+      avatar: "",
+      service_ids: []
     });
   };
 
@@ -248,7 +253,8 @@ export default function App() {
       date: info.dateStr.split("T")[0],
       time: `${hours}:${minutes}`,
       price: "",
-      master_id: info.resource?.id || ""
+      master_id: info.resource?.id || "",
+      service_id: ""
     });
 
     setDialogOpen(true);
@@ -269,7 +275,8 @@ export default function App() {
       date: event.appointment_time.slice(0,10),
       time: `${hours}:${minutes}`,
       price: event.price,
-      master_id: event.master_id
+      master_id: event.master_id,
+      service_id: event.service_id || ""
     });
 
     setDialogOpen(true);
@@ -281,7 +288,8 @@ export default function App() {
       title: newEvent.title,
       price: parseFloat(newEvent.price) || 0,
       datetime: `${newEvent.date}T${newEvent.time}:00`,
-      master_id: newEvent.master_id
+      master_id: newEvent.master_id,
+      service_id: newEvent.service_id || null
     };
 
     if (editingId) {
@@ -310,6 +318,11 @@ export default function App() {
   };
 
   // ---------------- FINANCE ----------------
+
+  const selectedMaster = masters.find((m) => m.id === Number(newEvent.master_id));
+  const selectedMasterServices = services.filter((service) =>
+    selectedMaster?.service_ids?.includes(service.id)
+  );
 
   const financeData = masters.map(m => {
     const masterAppointments = appointments.filter(
@@ -625,10 +638,12 @@ export default function App() {
                   setNewMaster({
                     name:"",
                     phone:"",
+                    email:"",
                     position:"",
                     percent:40,
                     color:"#6366f1",
-                    avatar:""
+                    avatar:"",
+                    service_ids: []
                   });
                   setMasterDialogOpen(true);
                 }}
@@ -646,10 +661,12 @@ export default function App() {
                         setNewMaster({
                           name: m.name || "",
                           phone: m.phone || "",
+                          email: m.email || "",
                           position: m.position || "",
                           percent: m.percent || 40,
                           color: m.color || "#6366f1",
-                          avatar: m.avatar || ""
+                          avatar: m.avatar || "",
+                          service_ids: m.service_ids || []
                         });
                         setMasterDialogOpen(true);
                       }}
@@ -665,6 +682,7 @@ export default function App() {
                         <Box sx={{ flexGrow:1 }}>
                           <Typography variant="h6">{m.name}</Typography>
                           <Typography variant="body2">{m.phone}</Typography>
+                          <Typography variant="body2">{m.email}</Typography>
                           <Typography variant="body2">{m.position}</Typography>
                           <Typography variant="body2">
                             {m.percent}%
@@ -718,13 +736,28 @@ export default function App() {
               <Select
                 value={newEvent.master_id}
                 label="Мастер"
-                onChange={(e)=>setNewEvent({...newEvent,master_id:e.target.value})}
+                onChange={(e)=>setNewEvent({...newEvent,master_id:e.target.value,service_id:""})}
               >
                 {masters.map(m=>(
                   <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
+
+            {newEvent.master_id && (
+              <FormControl fullWidth margin="dense">
+                <InputLabel>Услуга</InputLabel>
+                <Select
+                  value={newEvent.service_id}
+                  label="Услуга"
+                  onChange={(e)=>setNewEvent({...newEvent,service_id:e.target.value})}
+                >
+                  {selectedMasterServices.map((service)=>(
+                    <MenuItem key={service.id} value={service.id}>{service.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
           </DialogContent>
 
           <DialogActions>
@@ -760,6 +793,12 @@ export default function App() {
             />
 
             <TextField fullWidth margin="dense"
+              label="E-mail"
+              value={newMaster.email}
+              onChange={(e)=>setNewMaster({...newMaster,email:e.target.value})}
+            />
+
+            <TextField fullWidth margin="dense"
               label="Должность"
               value={newMaster.position}
               onChange={(e)=>setNewMaster({...newMaster,position:e.target.value})}
@@ -772,6 +811,24 @@ export default function App() {
                 </MenuItem>
               ))}
             </TextField>
+
+            <FormControl fullWidth margin="dense">
+              <InputLabel>Услуги</InputLabel>
+              <Select
+                multiple
+                value={newMaster.service_ids}
+                label="Услуги"
+                onChange={(e)=>setNewMaster({...newMaster,service_ids:e.target.value})}
+                renderValue={(selected) => services
+                  .filter((service) => selected.includes(service.id))
+                  .map((service) => service.name)
+                  .join(", ")}
+              >
+                {services.map((service) => (
+                  <MenuItem key={service.id} value={service.id}>{service.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             <TextField fullWidth margin="dense"
               type="number"

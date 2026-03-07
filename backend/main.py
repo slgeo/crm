@@ -8,6 +8,23 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+def serialize_master(master: models.Master):
+    return {
+        "id": master.id,
+        "name": master.name,
+        "phone": master.phone,
+        "email": master.email,
+        "position": master.position,
+        "percent": master.percent,
+        "description": master.description,
+        "color": master.color,
+        "default_duration": master.default_duration,
+        "branch_id": master.branch_id,
+        "avatar": master.avatar,
+        "service_ids": [service.id for service in master.services]
+    }
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -68,10 +85,16 @@ def update_position(position_id: int, data: dict, db: Session = Depends(get_db))
 
 @app.get("/api/masters")
 def get_masters(db: Session = Depends(get_db)):
-    return db.query(models.Master).all()
+    masters = db.query(models.Master).all()
+    return [serialize_master(master) for master in masters]
 
 @app.post("/api/masters")
 def create_master(data: dict, db: Session = Depends(get_db)):
+    service_ids = data.get("service_ids", [])
+    services = []
+    if service_ids:
+        services = db.query(models.Service).filter(models.Service.id.in_(service_ids)).all()
+
     master = models.Master(
         name=data["name"],
         phone=data.get("phone"),
@@ -83,10 +106,11 @@ def create_master(data: dict, db: Session = Depends(get_db)):
         default_duration=data.get("default_duration", 60),
         avatar=data.get("avatar")
     )
+    master.services = services
     db.add(master)
     db.commit()
     db.refresh(master)
-    return master
+    return serialize_master(master)
     
 @app.put("/api/masters/{master_id}")
 def update_master(master_id: int, data: dict, db: Session = Depends(get_db)):
@@ -95,15 +119,22 @@ def update_master(master_id: int, data: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404)
 
     master.name = data.get("name")
+    service_ids = data.get("service_ids", [])
+    services = []
+    if service_ids:
+        services = db.query(models.Service).filter(models.Service.id.in_(service_ids)).all()
+
     master.phone = data.get("phone")
+    master.email = data.get("email")
     master.position = data.get("position")
     master.percent = data.get("percent")
     master.color = data.get("color")
     master.avatar = data.get("avatar")
+    master.services = services
 
     db.commit()
     db.refresh(master)
-    return master 
+    return serialize_master(master)
 
 @app.delete("/api/masters/{master_id}")
 def delete_master(master_id: int, db: Session = Depends(get_db)):
@@ -243,6 +274,7 @@ def create_appointment(data: dict, db: Session = Depends(get_db)):
         title=data["title"],
         appointment_time=datetime.fromisoformat(data["datetime"]),
         master_id=data.get("master_id"),
+        service_id=data.get("service_id"),
         price=data.get("price", 0),
         master_income=data.get("master_income", 0)
     )
@@ -260,6 +292,7 @@ def update_appointment(appt_id: int, data: dict, db: Session = Depends(get_db)):
     appt.title = data["title"]
     appt.price = data.get("price", 0)
     appt.master_id = data.get("master_id")
+    appt.service_id = data.get("service_id")
     appt.appointment_time = datetime.fromisoformat(data["datetime"])
 
     db.commit()
