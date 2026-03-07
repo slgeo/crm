@@ -98,6 +98,59 @@ def delete_master(master_id: int, db: Session = Depends(get_db)):
     return {"message": "Deleted"}    
 # ------------------- ЗАПИСИ -------------------
 
+@app.get("/api/services")
+def get_services(db: Session = Depends(get_db)):
+    return db.query(models.Service).all()
+
+
+@app.post("/api/services")
+def create_service(data: dict, db: Session = Depends(get_db)):
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Service name is required")
+
+    service = models.Service(
+        name=name,
+        price=data.get("price", 0),
+        duration_minutes=data.get("duration_minutes", 60)
+    )
+    db.add(service)
+    db.commit()
+    db.refresh(service)
+    return service
+
+
+@app.put("/api/services/{service_id}")
+def update_service(service_id: int, data: dict, db: Session = Depends(get_db)):
+    service = db.query(models.Service).get(service_id)
+    if not service:
+        raise HTTPException(status_code=404)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Service name is required")
+
+    service.name = name
+    service.price = data.get("price", 0)
+    service.duration_minutes = data.get("duration_minutes", 60)
+
+    db.commit()
+    db.refresh(service)
+    return service
+
+
+@app.delete("/api/services/{service_id}")
+def delete_service(service_id: int, db: Session = Depends(get_db)):
+    service = db.query(models.Service).get(service_id)
+    if not service:
+        raise HTTPException(status_code=404)
+
+    db.delete(service)
+    db.commit()
+    return {"message": "Deleted"}
+
+# ------------------- ЗАПИСИ -------------------
+
 @app.get("/api/appointments")
 def get_appointments(db: Session = Depends(get_db)):
     return db.query(models.Appointment).all()

@@ -42,6 +42,7 @@ export default function App() {
   const [appointments, setAppointments] = useState([]);
   const [masters, setMasters] = useState([]);
   const [positions, setPositions] = useState([]);
+  const [services, setServices] = useState([]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -49,10 +50,18 @@ export default function App() {
   const [masterDialogOpen, setMasterDialogOpen] = useState(false);
   const [editingMasterId, setEditingMasterId] = useState(null);
   const [positionDialogOpen, setPositionDialogOpen] = useState(false);
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
+  const [editingServiceId, setEditingServiceId] = useState(null);
 
   const [newPosition, setNewPosition] = useState({
     name: "",
     description: ""
+  });
+
+  const [newService, setNewService] = useState({
+    name: "",
+    price: "",
+    duration_minutes: 60
   });
 
   const [newMaster, setNewMaster] = useState({
@@ -82,6 +91,7 @@ export default function App() {
     axios.get("/api/appointments").then(r => setAppointments(r.data));
     axios.get("/api/masters").then(r => setMasters(r.data));
     axios.get("/api/positions").then(r => setPositions(r.data));
+    axios.get("/api/services").then(r => setServices(r.data));
   };
 
   useEffect(() => { loadData(); }, []);
@@ -148,6 +158,36 @@ export default function App() {
 
   const deletePosition = (id) => {
     axios.delete(`/api/positions/${id}`)
+      .then(() => loadData());
+  };
+
+  // ---------------- SERVICES CRUD ----------------
+
+  const saveService = () => {
+    const payload = {
+      name: newService.name.trim(),
+      price: parseFloat(newService.price) || 0,
+      duration_minutes: parseInt(newService.duration_minutes, 10) || 60
+    };
+
+    if (!payload.name) {
+      return;
+    }
+
+    const request = editingServiceId
+      ? axios.put(`/api/services/${editingServiceId}`, payload)
+      : axios.post("/api/services", payload);
+
+    request.then(() => {
+      setServiceDialogOpen(false);
+      setEditingServiceId(null);
+      setNewService({ name: "", price: "", duration_minutes: 60 });
+      loadData();
+    });
+  };
+
+  const deleteService = (id) => {
+    axios.delete(`/api/services/${id}`)
       .then(() => loadData());
   };
 
@@ -377,7 +417,59 @@ export default function App() {
 		  )}
           
 		  {page==="services" && (
-            <Typography variant="h5">Раздел "Услуги"</Typography>
+            <>
+              <Button
+                variant="contained"
+                sx={{ mb:2 }}
+                onClick={() => {
+                  setEditingServiceId(null);
+                  setNewService({ name: "", price: "", duration_minutes: 60 });
+                  setServiceDialogOpen(true);
+                }}
+              >
+                Добавить услугу
+              </Button>
+
+              <Grid container spacing={3}>
+                {services.map(service => (
+                  <Grid item xs={12} md={4} key={service.id}>
+                    <Card
+                      sx={{ cursor:"pointer" }}
+                      onClick={() => {
+                        setEditingServiceId(service.id);
+                        setNewService({
+                          name: service.name || "",
+                          price: service.price || "",
+                          duration_minutes: service.duration_minutes || 60
+                        });
+                        setServiceDialogOpen(true);
+                      }}
+                    >
+                      <CardContent sx={{ display:"flex", alignItems:"flex-start", gap:2 }}>
+                        <Box sx={{ flexGrow:1 }}>
+                          <Typography variant="h6">{service.name}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Цена: {service.price || 0} ₽
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Длительность: {service.duration_minutes || 60} мин
+                          </Typography>
+                        </Box>
+
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteService(service.id);
+                          }}
+                        >
+                          <DeleteIcon/>
+                        </IconButton>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </>
           )}
 
           {page==="positions" && (
@@ -604,6 +696,47 @@ export default function App() {
           </DialogActions>
         </Dialog>
 
+
+
+        {/* SERVICE DIALOG */}
+        <Dialog open={serviceDialogOpen} onClose={() => setServiceDialogOpen(false)}>
+          <DialogTitle>
+            {editingServiceId ? "Редактирование услуги" : "Новая услуга"}
+          </DialogTitle>
+
+          <DialogContent>
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Название"
+              value={newService.name}
+              onChange={(e)=>setNewService({...newService,name:e.target.value})}
+            />
+
+            <TextField
+              fullWidth
+              margin="dense"
+              type="number"
+              label="Цена"
+              value={newService.price}
+              onChange={(e)=>setNewService({...newService,price:e.target.value})}
+            />
+
+            <TextField
+              fullWidth
+              margin="dense"
+              type="number"
+              label="Длительность (мин)"
+              value={newService.duration_minutes}
+              onChange={(e)=>setNewService({...newService,duration_minutes:e.target.value})}
+            />
+          </DialogContent>
+
+          <DialogActions>
+            <Button onClick={() => setServiceDialogOpen(false)}>Отмена</Button>
+            <Button onClick={saveService} variant="contained">Сохранить</Button>
+          </DialogActions>
+        </Dialog>
 
 
         {/* POSITION DIALOG */}
