@@ -17,6 +17,37 @@ def get_db():
 
 # ------------------- МАСТЕРА -------------------
 
+@app.get("/api/positions")
+def get_positions(db: Session = Depends(get_db)):
+    return db.query(models.Position).all()
+
+
+@app.post("/api/positions")
+def create_position(data: dict, db: Session = Depends(get_db)):
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Position name is required")
+
+    position = models.Position(
+        name=name,
+        description=data.get("description")
+    )
+    db.add(position)
+    db.commit()
+    db.refresh(position)
+    return position
+
+
+@app.delete("/api/positions/{position_id}")
+def delete_position(position_id: int, db: Session = Depends(get_db)):
+    position = db.query(models.Position).get(position_id)
+    if not position:
+        raise HTTPException(status_code=404)
+
+    db.delete(position)
+    db.commit()
+    return {"message": "Deleted"}
+
 @app.get("/api/masters")
 def get_masters(db: Session = Depends(get_db)):
     return db.query(models.Master).all()
@@ -65,6 +96,106 @@ def delete_master(master_id: int, db: Session = Depends(get_db)):
     db.delete(master)
     db.commit()
     return {"message": "Deleted"}    
+# ------------------- ЗАПИСИ -------------------
+
+@app.get("/api/services")
+def get_services(db: Session = Depends(get_db)):
+    return db.query(models.Service).all()
+
+
+@app.get("/api/service-categories")
+def get_service_categories(db: Session = Depends(get_db)):
+    return db.query(models.ServiceCategory).all()
+
+
+@app.post("/api/service-categories")
+def create_service_category(data: dict, db: Session = Depends(get_db)):
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Category name is required")
+
+    category = models.ServiceCategory(name=name)
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+@app.delete("/api/service-categories/{category_id}")
+def delete_service_category(category_id: int, db: Session = Depends(get_db)):
+    category = db.query(models.ServiceCategory).get(category_id)
+    if not category:
+        raise HTTPException(status_code=404)
+
+    services_count = db.query(models.Service).filter(models.Service.category_id == category_id).count()
+    if services_count:
+        raise HTTPException(status_code=400, detail="Category is used in services")
+
+    db.delete(category)
+    db.commit()
+    return {"message": "Deleted"}
+
+
+@app.post("/api/services")
+def create_service(data: dict, db: Session = Depends(get_db)):
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Service name is required")
+
+    category_id = data.get("category_id")
+    if category_id:
+        category = db.query(models.ServiceCategory).get(category_id)
+        if not category:
+            raise HTTPException(status_code=400, detail="Invalid category_id")
+
+    service = models.Service(
+        name=name,
+        category_id=category_id,
+        price=data.get("price", 0),
+        duration_minutes=data.get("duration_minutes", 60)
+    )
+    db.add(service)
+    db.commit()
+    db.refresh(service)
+    return service
+
+
+@app.put("/api/services/{service_id}")
+def update_service(service_id: int, data: dict, db: Session = Depends(get_db)):
+    service = db.query(models.Service).get(service_id)
+    if not service:
+        raise HTTPException(status_code=404)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Service name is required")
+
+    category_id = data.get("category_id")
+    if category_id:
+        category = db.query(models.ServiceCategory).get(category_id)
+        if not category:
+            raise HTTPException(status_code=400, detail="Invalid category_id")
+
+    service.name = name
+    service.category_id = category_id
+    service.price = data.get("price", 0)
+    service.duration_minutes = data.get("duration_minutes", 60)
+
+    db.commit()
+    db.refresh(service)
+    return service
+
+
+@app.delete("/api/services/{service_id}")
+def delete_service(service_id: int, db: Session = Depends(get_db)):
+    service = db.query(models.Service).get(service_id)
+    if not service:
+        raise HTTPException(status_code=404)
+
+    db.delete(service)
+    db.commit()
+    return {"message": "Deleted"}
+
 # ------------------- ЗАПИСИ -------------------
 
 @app.get("/api/appointments")
