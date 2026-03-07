@@ -17,6 +17,37 @@ def get_db():
 
 # ------------------- МАСТЕРА -------------------
 
+@app.get("/api/positions")
+def get_positions(db: Session = Depends(get_db)):
+    return db.query(models.Position).all()
+
+
+@app.post("/api/positions")
+def create_position(data: dict, db: Session = Depends(get_db)):
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Position name is required")
+
+    position = models.Position(
+        name=name,
+        description=data.get("description")
+    )
+    db.add(position)
+    db.commit()
+    db.refresh(position)
+    return position
+
+
+@app.delete("/api/positions/{position_id}")
+def delete_position(position_id: int, db: Session = Depends(get_db)):
+    position = db.query(models.Position).get(position_id)
+    if not position:
+        raise HTTPException(status_code=404)
+
+    db.delete(position)
+    db.commit()
+    return {"message": "Deleted"}
+
 @app.get("/api/masters")
 def get_masters(db: Session = Depends(get_db)):
     return db.query(models.Master).all()

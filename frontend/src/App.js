@@ -41,12 +41,19 @@ export default function App() {
 
   const [appointments, setAppointments] = useState([]);
   const [masters, setMasters] = useState([]);
+  const [positions, setPositions] = useState([]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
   const [masterDialogOpen, setMasterDialogOpen] = useState(false);
   const [editingMasterId, setEditingMasterId] = useState(null);
+  const [positionDialogOpen, setPositionDialogOpen] = useState(false);
+
+  const [newPosition, setNewPosition] = useState({
+    name: "",
+    description: ""
+  });
 
   const [newMaster, setNewMaster] = useState({
     name: "",
@@ -74,6 +81,7 @@ export default function App() {
   const loadData = () => {
     axios.get("/api/appointments").then(r => setAppointments(r.data));
     axios.get("/api/masters").then(r => setMasters(r.data));
+    axios.get("/api/positions").then(r => setPositions(r.data));
   };
 
   useEffect(() => { loadData(); }, []);
@@ -115,6 +123,31 @@ export default function App() {
 
   const deleteMaster = (id) => {
     axios.delete(`/api/masters/${id}`)
+      .then(() => loadData());
+  };
+
+  // ---------------- POSITIONS CRUD ----------------
+
+  const savePosition = () => {
+    const payload = {
+      name: newPosition.name.trim(),
+      description: newPosition.description.trim()
+    };
+
+    if (!payload.name) {
+      return;
+    }
+
+    axios.post("/api/positions", payload)
+      .then(() => {
+        setPositionDialogOpen(false);
+        setNewPosition({ name: "", description: "" });
+        loadData();
+      });
+  };
+
+  const deletePosition = (id) => {
+    axios.delete(`/api/positions/${id}`)
       .then(() => loadData());
   };
 
@@ -348,7 +381,39 @@ export default function App() {
           )}
 
           {page==="positions" && (
-            <Typography variant="h5">Раздел "Должности"</Typography>
+            <>
+              <Button
+                variant="contained"
+                sx={{ mb:2 }}
+                onClick={() => {
+                  setNewPosition({ name: "", description: "" });
+                  setPositionDialogOpen(true);
+                }}
+              >
+                Добавить должность
+              </Button>
+
+              <Grid container spacing={3}>
+                {positions.map(position => (
+                  <Grid item xs={12} md={4} key={position.id}>
+                    <Card>
+                      <CardContent sx={{ display:"flex", alignItems:"flex-start", gap:2 }}>
+                        <Box sx={{ flexGrow:1 }}>
+                          <Typography variant="h6">{position.name}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {position.description || "Без описания"}
+                          </Typography>
+                        </Box>
+
+                        <IconButton onClick={() => deletePosition(position.id)}>
+                          <DeleteIcon/>
+                        </IconButton>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </>
           )}
 
           {page==="masters" && (
@@ -499,7 +564,15 @@ export default function App() {
               label="Должность"
               value={newMaster.position}
               onChange={(e)=>setNewMaster({...newMaster,position:e.target.value})}
-            />
+              select
+            >
+              <MenuItem value="">Не выбрано</MenuItem>
+              {positions.map(position => (
+                <MenuItem key={position.id} value={position.name}>
+                  {position.name}
+                </MenuItem>
+              ))}
+            </TextField>
 
             <TextField fullWidth margin="dense"
               type="number"
@@ -528,6 +601,38 @@ export default function App() {
             <Button onClick={saveMaster} variant="contained">
               Сохранить
             </Button>
+          </DialogActions>
+        </Dialog>
+
+
+
+        {/* POSITION DIALOG */}
+        <Dialog open={positionDialogOpen} onClose={()=>setPositionDialogOpen(false)}>
+          <DialogTitle>Новая должность</DialogTitle>
+
+          <DialogContent>
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Название"
+              value={newPosition.name}
+              onChange={(e)=>setNewPosition({...newPosition,name:e.target.value})}
+            />
+
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Описание"
+              multiline
+              minRows={3}
+              value={newPosition.description}
+              onChange={(e)=>setNewPosition({...newPosition,description:e.target.value})}
+            />
+          </DialogContent>
+
+          <DialogActions>
+            <Button onClick={()=>setPositionDialogOpen(false)}>Отмена</Button>
+            <Button onClick={savePosition} variant="contained">Сохранить</Button>
           </DialogActions>
         </Dialog>
 
