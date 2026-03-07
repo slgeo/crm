@@ -48,6 +48,24 @@ def delete_position(position_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Deleted"}
 
+
+@app.put("/api/positions/{position_id}")
+def update_position(position_id: int, data: dict, db: Session = Depends(get_db)):
+    position = db.query(models.Position).get(position_id)
+    if not position:
+        raise HTTPException(status_code=404)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Position name is required")
+
+    position.name = name
+    position.description = data.get("description")
+
+    db.commit()
+    db.refresh(position)
+    return position
+
 @app.get("/api/masters")
 def get_masters(db: Session = Depends(get_db)):
     return db.query(models.Master).all()
@@ -134,6 +152,23 @@ def delete_service_category(category_id: int, db: Session = Depends(get_db)):
     db.delete(category)
     db.commit()
     return {"message": "Deleted"}
+
+
+@app.put("/api/service-categories/{category_id}")
+def update_service_category(category_id: int, data: dict, db: Session = Depends(get_db)):
+    category = db.query(models.ServiceCategory).get(category_id)
+    if not category:
+        raise HTTPException(status_code=404)
+
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Category name is required")
+
+    category.name = name
+
+    db.commit()
+    db.refresh(category)
+    return category
 
 
 @app.post("/api/services")

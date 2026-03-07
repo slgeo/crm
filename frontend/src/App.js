@@ -51,9 +51,11 @@ export default function App() {
   const [masterDialogOpen, setMasterDialogOpen] = useState(false);
   const [editingMasterId, setEditingMasterId] = useState(null);
   const [positionDialogOpen, setPositionDialogOpen] = useState(false);
+  const [editingPositionId, setEditingPositionId] = useState(null);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState(null);
   const [serviceCategoryDialogOpen, setServiceCategoryDialogOpen] = useState(false);
+  const [editingServiceCategoryId, setEditingServiceCategoryId] = useState(null);
 
   const [newPosition, setNewPosition] = useState({
     name: "",
@@ -156,12 +158,16 @@ export default function App() {
       return;
     }
 
-    axios.post("/api/positions", payload)
-      .then(() => {
-        setPositionDialogOpen(false);
-        setNewPosition({ name: "", description: "" });
-        loadData();
-      });
+    const request = editingPositionId
+      ? axios.put(`/api/positions/${editingPositionId}`, payload)
+      : axios.post("/api/positions", payload);
+
+    request.then(() => {
+      setPositionDialogOpen(false);
+      setEditingPositionId(null);
+      setNewPosition({ name: "", description: "" });
+      loadData();
+    });
   };
 
   const deletePosition = (id) => {
@@ -211,12 +217,16 @@ export default function App() {
       return;
     }
 
-    axios.post("/api/service-categories", payload)
-      .then(() => {
-        setServiceCategoryDialogOpen(false);
-        setNewServiceCategory({ name: "" });
-        loadData();
-      });
+    const request = editingServiceCategoryId
+      ? axios.put(`/api/service-categories/${editingServiceCategoryId}`, payload)
+      : axios.post("/api/service-categories", payload);
+
+    request.then(() => {
+      setServiceCategoryDialogOpen(false);
+      setEditingServiceCategoryId(null);
+      setNewServiceCategory({ name: "" });
+      loadData();
+    });
   };
 
   const deleteServiceCategory = (id) => {
@@ -451,6 +461,7 @@ export default function App() {
                 variant="contained"
                 sx={{ mb:2 }}
                 onClick={() => {
+                  setEditingServiceCategoryId(null);
                   setNewServiceCategory({ name: "" });
                   setServiceCategoryDialogOpen(true);
                 }}
@@ -461,13 +472,27 @@ export default function App() {
               <Grid container spacing={3}>
                 {serviceCategories.map(category => (
                   <Grid item xs={12} md={4} key={category.id}>
-                    <Card>
+                    <Card
+                      sx={{ cursor:"pointer" }}
+                      onClick={() => {
+                        setEditingServiceCategoryId(category.id);
+                        setNewServiceCategory({
+                          name: category.name || ""
+                        });
+                        setServiceCategoryDialogOpen(true);
+                      }}
+                    >
                       <CardContent sx={{ display:"flex", alignItems:"center", gap:2 }}>
                         <Box sx={{ flexGrow:1 }}>
                           <Typography variant="h6">{category.name}</Typography>
                         </Box>
 
-                        <IconButton onClick={() => deleteServiceCategory(category.id)}>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteServiceCategory(category.id);
+                          }}
+                        >
                           <DeleteIcon/>
                         </IconButton>
                       </CardContent>
@@ -544,6 +569,7 @@ export default function App() {
                 variant="contained"
                 sx={{ mb:2 }}
                 onClick={() => {
+                  setEditingPositionId(null);
                   setNewPosition({ name: "", description: "" });
                   setPositionDialogOpen(true);
                 }}
@@ -554,7 +580,17 @@ export default function App() {
               <Grid container spacing={3}>
                 {positions.map(position => (
                   <Grid item xs={12} md={4} key={position.id}>
-                    <Card>
+                    <Card
+                      sx={{ cursor:"pointer" }}
+                      onClick={() => {
+                        setEditingPositionId(position.id);
+                        setNewPosition({
+                          name: position.name || "",
+                          description: position.description || ""
+                        });
+                        setPositionDialogOpen(true);
+                      }}
+                    >
                       <CardContent sx={{ display:"flex", alignItems:"flex-start", gap:2 }}>
                         <Box sx={{ flexGrow:1 }}>
                           <Typography variant="h6">{position.name}</Typography>
@@ -563,7 +599,12 @@ export default function App() {
                           </Typography>
                         </Box>
 
-                        <IconButton onClick={() => deletePosition(position.id)}>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deletePosition(position.id);
+                          }}
+                        >
                           <DeleteIcon/>
                         </IconButton>
                       </CardContent>
@@ -820,8 +861,8 @@ export default function App() {
 
 
         {/* SERVICE CATEGORY DIALOG */}
-        <Dialog open={serviceCategoryDialogOpen} onClose={() => setServiceCategoryDialogOpen(false)}>
-          <DialogTitle>Новая категория услуг</DialogTitle>
+        <Dialog open={serviceCategoryDialogOpen} onClose={() => { setServiceCategoryDialogOpen(false); setEditingServiceCategoryId(null); }}>
+          <DialogTitle>{editingServiceCategoryId ? "Редактирование категории услуг" : "Новая категория услуг"}</DialogTitle>
 
           <DialogContent>
             <TextField
@@ -834,14 +875,14 @@ export default function App() {
           </DialogContent>
 
           <DialogActions>
-            <Button onClick={() => setServiceCategoryDialogOpen(false)}>Отмена</Button>
+            <Button onClick={() => { setServiceCategoryDialogOpen(false); setEditingServiceCategoryId(null); }}>Отмена</Button>
             <Button onClick={saveServiceCategory} variant="contained">Сохранить</Button>
           </DialogActions>
         </Dialog>
 
         {/* POSITION DIALOG */}
-        <Dialog open={positionDialogOpen} onClose={()=>setPositionDialogOpen(false)}>
-          <DialogTitle>Новая должность</DialogTitle>
+        <Dialog open={positionDialogOpen} onClose={()=>{setPositionDialogOpen(false); setEditingPositionId(null);}}>
+          <DialogTitle>{editingPositionId ? "Редактирование должности" : "Новая должность"}</DialogTitle>
 
           <DialogContent>
             <TextField
@@ -864,7 +905,7 @@ export default function App() {
           </DialogContent>
 
           <DialogActions>
-            <Button onClick={()=>setPositionDialogOpen(false)}>Отмена</Button>
+            <Button onClick={()=>{setPositionDialogOpen(false); setEditingPositionId(null);}}>Отмена</Button>
             <Button onClick={savePosition} variant="contained">Сохранить</Button>
           </DialogActions>
         </Dialog>
