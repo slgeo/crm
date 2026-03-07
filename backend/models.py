@@ -15,6 +15,7 @@ class Master(Base):
     name = Column(String)
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
+    position = Column(String, nullable=True)
     percent = Column(Float, default=40)
     description = Column(String, nullable=True)
     color = Column(String, default="#6366f1")

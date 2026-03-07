@@ -51,6 +51,7 @@ export default function App() {
   const [newMaster, setNewMaster] = useState({
     name: "",
     phone: "",
+    position: "",
     percent: 40,
     color: "#6366f1",
     avatar: ""
@@ -105,6 +106,7 @@ export default function App() {
     setNewMaster({
       name: "",
       phone: "",
+      position: "",
       percent: 40,
       color: "#6366f1",
       avatar: ""
@@ -359,6 +361,7 @@ export default function App() {
                   setNewMaster({
                     name:"",
                     phone:"",
+                    position:"",
                     percent:40,
                     color:"#6366f1",
                     avatar:""
@@ -379,6 +382,7 @@ export default function App() {
                         setNewMaster({
                           name: m.name || "",
                           phone: m.phone || "",
+                          position: m.position || "",
                           percent: m.percent || 40,
                           color: m.color || "#6366f1",
                           avatar: m.avatar || ""
@@ -397,6 +401,7 @@ export default function App() {
                         <Box sx={{ flexGrow:1 }}>
                           <Typography variant="h6">{m.name}</Typography>
                           <Typography variant="body2">{m.phone}</Typography>
+                          <Typography variant="body2">{m.position}</Typography>
                           <Typography variant="body2">
                             {m.percent}%
                           </Typography>
@@ -488,6 +493,12 @@ export default function App() {
               label="Телефон"
               value={newMaster.phone}
               onChange={(e)=>setNewMaster({...newMaster,phone:e.target.value})}
+            />
+
+            <TextField fullWidth margin="dense"
+              label="Должность"
+              value={newMaster.position}
+              onChange={(e)=>setNewMaster({...newMaster,position:e.target.value})}
             />
 
             <TextField fullWidth margin="dense"

@@ -27,6 +27,7 @@ def create_master(data: dict, db: Session = Depends(get_db)):
         name=data["name"],
         phone=data.get("phone"),
         email=data.get("email"),
+        position=data.get("position"),
         percent=data.get("percent", 40),
         description=data.get("description"),
         color=data.get("color", "#6366f1"),
@@ -46,6 +47,7 @@ def update_master(master_id: int, data: dict, db: Session = Depends(get_db)):
 
     master.name = data.get("name")
     master.phone = data.get("phone")
+    master.position = data.get("position")
     master.percent = data.get("percent")
     master.color = data.get("color")
     master.avatar = data.get("avatar")
