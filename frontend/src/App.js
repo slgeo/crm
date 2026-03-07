@@ -43,6 +43,7 @@ export default function App() {
   const [masters, setMasters] = useState([]);
   const [positions, setPositions] = useState([]);
   const [services, setServices] = useState([]);
+  const [serviceCategories, setServiceCategories] = useState([]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -52,6 +53,7 @@ export default function App() {
   const [positionDialogOpen, setPositionDialogOpen] = useState(false);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState(null);
+  const [serviceCategoryDialogOpen, setServiceCategoryDialogOpen] = useState(false);
 
   const [newPosition, setNewPosition] = useState({
     name: "",
@@ -60,8 +62,13 @@ export default function App() {
 
   const [newService, setNewService] = useState({
     name: "",
+    category_id: "",
     price: "",
     duration_minutes: 60
+  });
+
+  const [newServiceCategory, setNewServiceCategory] = useState({
+    name: ""
   });
 
   const [newMaster, setNewMaster] = useState({
@@ -92,6 +99,7 @@ export default function App() {
     axios.get("/api/masters").then(r => setMasters(r.data));
     axios.get("/api/positions").then(r => setPositions(r.data));
     axios.get("/api/services").then(r => setServices(r.data));
+    axios.get("/api/service-categories").then(r => setServiceCategories(r.data));
   };
 
   useEffect(() => { loadData(); }, []);
@@ -166,6 +174,7 @@ export default function App() {
   const saveService = () => {
     const payload = {
       name: newService.name.trim(),
+      category_id: newService.category_id || null,
       price: parseFloat(newService.price) || 0,
       duration_minutes: parseInt(newService.duration_minutes, 10) || 60
     };
@@ -181,13 +190,37 @@ export default function App() {
     request.then(() => {
       setServiceDialogOpen(false);
       setEditingServiceId(null);
-      setNewService({ name: "", price: "", duration_minutes: 60 });
+      setNewService({ name: "", category_id: "", price: "", duration_minutes: 60 });
       loadData();
     });
   };
 
   const deleteService = (id) => {
     axios.delete(`/api/services/${id}`)
+      .then(() => loadData());
+  };
+
+  // ---------------- SERVICE CATEGORIES CRUD ----------------
+
+  const saveServiceCategory = () => {
+    const payload = {
+      name: newServiceCategory.name.trim()
+    };
+
+    if (!payload.name) {
+      return;
+    }
+
+    axios.post("/api/service-categories", payload)
+      .then(() => {
+        setServiceCategoryDialogOpen(false);
+        setNewServiceCategory({ name: "" });
+        loadData();
+      });
+  };
+
+  const deleteServiceCategory = (id) => {
+    axios.delete(`/api/service-categories/${id}`)
       .then(() => loadData());
   };
 
@@ -412,9 +445,38 @@ export default function App() {
             </Card>
           )}
 
-		  {page==="serviceCategories" && (
-		    <Typography variant="h5">Раздел "Категории услуг"</Typography>
-		  )}
+          {page==="serviceCategories" && (
+            <>
+              <Button
+                variant="contained"
+                sx={{ mb:2 }}
+                onClick={() => {
+                  setNewServiceCategory({ name: "" });
+                  setServiceCategoryDialogOpen(true);
+                }}
+              >
+                Добавить категорию
+              </Button>
+
+              <Grid container spacing={3}>
+                {serviceCategories.map(category => (
+                  <Grid item xs={12} md={4} key={category.id}>
+                    <Card>
+                      <CardContent sx={{ display:"flex", alignItems:"center", gap:2 }}>
+                        <Box sx={{ flexGrow:1 }}>
+                          <Typography variant="h6">{category.name}</Typography>
+                        </Box>
+
+                        <IconButton onClick={() => deleteServiceCategory(category.id)}>
+                          <DeleteIcon/>
+                        </IconButton>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </>
+          )}
           
 		  {page==="services" && (
             <>
@@ -423,7 +485,7 @@ export default function App() {
                 sx={{ mb:2 }}
                 onClick={() => {
                   setEditingServiceId(null);
-                  setNewService({ name: "", price: "", duration_minutes: 60 });
+                  setNewService({ name: "", category_id: "", price: "", duration_minutes: 60 });
                   setServiceDialogOpen(true);
                 }}
               >
@@ -439,6 +501,7 @@ export default function App() {
                         setEditingServiceId(service.id);
                         setNewService({
                           name: service.name || "",
+                          category_id: service.category_id || "",
                           price: service.price || "",
                           duration_minutes: service.duration_minutes || 60
                         });
@@ -448,6 +511,9 @@ export default function App() {
                       <CardContent sx={{ display:"flex", alignItems:"flex-start", gap:2 }}>
                         <Box sx={{ flexGrow:1 }}>
                           <Typography variant="h6">{service.name}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Категория: {serviceCategories.find(c => c.id === service.category_id)?.name || "Без категории"}
+                          </Typography>
                           <Typography variant="body2" color="text.secondary">
                             Цена: {service.price || 0} ₽
                           </Typography>
@@ -713,6 +779,20 @@ export default function App() {
               onChange={(e)=>setNewService({...newService,name:e.target.value})}
             />
 
+            <FormControl fullWidth margin="dense">
+              <InputLabel>Категория</InputLabel>
+              <Select
+                value={newService.category_id}
+                label="Категория"
+                onChange={(e)=>setNewService({...newService,category_id:e.target.value})}
+              >
+                <MenuItem value="">Без категории</MenuItem>
+                {serviceCategories.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>{category.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <TextField
               fullWidth
               margin="dense"
@@ -738,6 +818,26 @@ export default function App() {
           </DialogActions>
         </Dialog>
 
+
+        {/* SERVICE CATEGORY DIALOG */}
+        <Dialog open={serviceCategoryDialogOpen} onClose={() => setServiceCategoryDialogOpen(false)}>
+          <DialogTitle>Новая категория услуг</DialogTitle>
+
+          <DialogContent>
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Название"
+              value={newServiceCategory.name}
+              onChange={(e)=>setNewServiceCategory({...newServiceCategory,name:e.target.value})}
+            />
+          </DialogContent>
+
+          <DialogActions>
+            <Button onClick={() => setServiceCategoryDialogOpen(false)}>Отмена</Button>
+            <Button onClick={saveServiceCategory} variant="contained">Сохранить</Button>
+          </DialogActions>
+        </Dialog>
 
         {/* POSITION DIALOG */}
         <Dialog open={positionDialogOpen} onClose={()=>setPositionDialogOpen(false)}>
