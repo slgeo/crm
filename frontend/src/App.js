@@ -24,6 +24,12 @@ import BuildIcon from "@mui/icons-material/Build";
 import BadgeIcon from "@mui/icons-material/Badge";
 import CategoryIcon from "@mui/icons-material/Category";
 import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import AddIcon from "@mui/icons-material/Add";
+import CheckIcon from "@mui/icons-material/Check";
+import RemoveIcon from "@mui/icons-material/Remove";
+import SearchIcon from "@mui/icons-material/Search";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 
 import {
   BarChart, Bar, XAxis, YAxis,
@@ -485,6 +491,24 @@ export default function App() {
       )
     };
   });
+
+  const statusIcons = {
+    waiting: <AccessTimeIcon fontSize="small" />,
+    arrived: <AddIcon fontSize="small" />,
+    absent: <RemoveIcon fontSize="small" />,
+    confirmed: <CheckIcon fontSize="small" />
+  };
+
+  const relatedClients = clients
+    .filter((client) => {
+      const normalized = newEvent.client_phone ? normalizePhone(newEvent.client_phone) : "";
+      if (normalized && client.phone === normalized) {
+        return true;
+      }
+
+      return newEvent.client_name && client.name?.toLowerCase().includes(newEvent.client_name.toLowerCase());
+    })
+    .slice(0, 3);
 
   return (
     <ThemeProvider theme={theme}>
@@ -950,90 +974,162 @@ export default function App() {
         </Box>
 
         {/* EVENT DIALOG */}
-        <Dialog open={dialogOpen} onClose={()=>setDialogOpen(false)}>
+        <Dialog open={dialogOpen} onClose={()=>setDialogOpen(false)} maxWidth="xl" fullWidth>
           <DialogTitle>
             {editingId ? "Редактирование записи" : "Новая запись"}
           </DialogTitle>
 
           <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 0.5, minWidth: { xs: 300, md: 700 } }}>
-              <Grid item xs={12} md={7}>
-                <TextField fullWidth margin="dense" label="Название"
-                  value={newEvent.title}
-                  onChange={(e)=>setNewEvent({...newEvent,title:e.target.value})}
-                  InputProps={{ readOnly: !editingId }}
-                />
-
-                <TextField fullWidth margin="dense" type="time"
-                  value={newEvent.time}
-                  onChange={(e)=>setNewEvent({...newEvent,time:e.target.value})}
-                />
-
-                <TextField fullWidth margin="dense" type="number"
-                  label="Цена"
-                  value={newEvent.price}
-                  onChange={(e)=>setNewEvent({...newEvent,price:e.target.value})}
-                />
-
-                <FormControl fullWidth margin="dense">
-                  <InputLabel>Мастер</InputLabel>
-                  <Select
-                    value={newEvent.master_id}
-                    label="Мастер"
-                    onChange={(e)=>handleMasterChange(e.target.value)}
-                  >
-                    {masters.map(m=>(
-                      <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                {newEvent.master_id && (
-                  <FormControl fullWidth margin="dense">
-                    <InputLabel>Услуга</InputLabel>
+            <Grid container spacing={2} sx={{ mt: 0.5 }}>
+              <Grid item xs={12} md={3}>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: "#f6f8fc" }}>
+                  <Typography color="text.secondary" sx={{ mb: 0.75 }}>Специалист</Typography>
+                  <FormControl fullWidth size="small" sx={{ mb: 2 }}>
                     <Select
-                      value={newEvent.service_id}
-                      label="Услуга"
-                      onChange={(e)=>handleServiceChange(e.target.value)}
+                      value={newEvent.master_id}
+                      displayEmpty
+                      onChange={(e)=>handleMasterChange(e.target.value)}
                     >
-                      {selectedMasterServices.map((service)=>(
-                        <MenuItem key={service.id} value={service.id}>{service.name}</MenuItem>
+                      <MenuItem value="">Выберите мастера</MenuItem>
+                      {masters.map(m=>(
+                        <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
                       ))}
                     </Select>
                   </FormControl>
-                )}
+
+                  <Typography color="text.secondary" sx={{ mb: 0.75 }}>Дата</Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    value={newEvent.date}
+                    onChange={(e)=>setNewEvent({...newEvent,date:e.target.value})}
+                    InputProps={{ endAdornment: <CalendarTodayIcon fontSize="small" color="action" /> }}
+                    sx={{ mb: 2 }}
+                  />
+
+                  <Typography color="text.secondary" sx={{ mb: 0.75 }}>Время и длительность</Typography>
+                  <Grid container spacing={1} sx={{ mb: 1 }}>
+                    <Grid item xs={6}>
+                      <TextField fullWidth size="small" type="time" value={newEvent.time} onChange={(e)=>setNewEvent({...newEvent,time:e.target.value})} />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        disabled
+                        value={selectedMasterServices.find((s)=>s.id === Number(newEvent.service_id))?.duration_minutes
+                          ? `${selectedMasterServices.find((s)=>s.id === Number(newEvent.service_id))?.duration_minutes} мин`
+                          : "60 мин"}
+                      />
+                    </Grid>
+                  </Grid>
+
+                  <Button fullWidth variant="outlined" startIcon={<AddIcon />}>
+                    Добавить перерыв
+                  </Button>
+
+                  <Typography color="text.secondary" sx={{ mt: 2, mb: 0.75 }}>Комментарий к записи</Typography>
+                  <TextField fullWidth multiline minRows={4} placeholder="Введите комментарий" />
+                </Paper>
               </Grid>
 
-              <Grid item xs={12} md={5}>
-                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: "100%" }}>
-                  <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
-                    Клиент
-                  </Typography>
-                  <TextField fullWidth margin="dense"
-                    label="Имя клиента"
-                    value={newEvent.client_name}
-                    onChange={(e)=>setNewEvent({...newEvent,client_name:e.target.value})}
-                  />
+              <Grid item xs={12} md={6}>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
+                    {appointmentStatuses.map((status) => (
+                      <Button
+                        key={status.value}
+                        startIcon={statusIcons[status.value]}
+                        variant={newEvent.status === status.value ? "contained" : "outlined"}
+                        color={newEvent.status === status.value ? "primary" : "inherit"}
+                        onClick={() => setNewEvent({ ...newEvent, status: status.value })}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        {status.label}
+                      </Button>
+                    ))}
+                  </Box>
 
-                  <TextField fullWidth margin="dense"
-                    label="Телефон клиента"
-                    value={newEvent.client_phone}
-                    onChange={(e)=>handleEventClientPhoneChange(e.target.value)}
-                    placeholder="+7 (___) ___-__-__"
-                  />
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: "#f8fafc" }}>
+                    <TextField
+                      fullWidth
+                      placeholder="Поиск по услугам"
+                      InputProps={{ startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} /> }}
+                      sx={{ mb: 2 }}
+                    />
 
-                  <FormControl fullWidth margin="dense">
-                    <InputLabel>Статус</InputLabel>
-                    <Select
-                      value={newEvent.status}
-                      label="Статус"
-                      onChange={(e)=>setNewEvent({...newEvent,status:e.target.value})}
-                    >
-                      {appointmentStatuses.map((status) => (
-                        <MenuItem key={status.value} value={status.value}>{status.label}</MenuItem>
+                    <Grid container spacing={1.5}>
+                      {selectedMasterServices.length === 0 && (
+                        <Grid item xs={12}>
+                          <Typography color="text.secondary">Выберите специалиста, чтобы увидеть услуги.</Typography>
+                        </Grid>
+                      )}
+
+                      {selectedMasterServices.map((service) => (
+                        <Grid item xs={12} sm={6} key={service.id}>
+                          <Paper
+                            variant="outlined"
+                            onClick={() => handleServiceChange(service.id)}
+                            sx={{
+                              p: 1.5,
+                              borderRadius: 2,
+                              cursor: "pointer",
+                              borderColor: Number(newEvent.service_id) === service.id ? "primary.main" : "divider"
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: 600 }}>{service.name}</Typography>
+                            <Typography color="text.secondary">{service.price} ₽</Typography>
+                            <Typography color="text.secondary">{service.duration_minutes || 60} мин</Typography>
+                          </Paper>
+                        </Grid>
                       ))}
-                    </Select>
-                  </FormControl>
+                    </Grid>
+                  </Paper>
+
+                  <TextField
+                    fullWidth
+                    margin="dense"
+                    label="Название"
+                    value={newEvent.title}
+                    onChange={(e)=>setNewEvent({...newEvent,title:e.target.value})}
+                    sx={{ mt: 2 }}
+                  />
+                  <TextField
+                    fullWidth
+                    margin="dense"
+                    type="number"
+                    label="Цена"
+                    value={newEvent.price}
+                    onChange={(e)=>setNewEvent({...newEvent,price:e.target.value})}
+                  />
+                </Paper>
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+                  <TextField fullWidth margin="dense" label="Имя" value={newEvent.client_name} onChange={(e)=>setNewEvent({...newEvent,client_name:e.target.value})} />
+
+                  <TextField fullWidth margin="dense" label="Телефон" value={newEvent.client_phone} onChange={(e)=>handleEventClientPhoneChange(e.target.value)} placeholder="+7 (___) ___-__-__" />
+
+                  <TextField fullWidth margin="dense" label="Email" placeholder="example@mail.com" />
+
+                  <Box sx={{ mt: 1.5, display: "flex", flexDirection: "column", gap: 1 }}>
+                    <Button variant="text" color="inherit" sx={{ justifyContent: "flex-start", textTransform: "none" }}>☐ Записывает другого посетителя</Button>
+                    <Button variant="text" color="inherit" sx={{ justifyContent: "flex-start", textTransform: "none" }}>☐ Согласие на обработку ПД</Button>
+                    <Button variant="text" color="inherit" sx={{ justifyContent: "flex-start", textTransform: "none" }}>☐ Согласие на рассылку</Button>
+                  </Box>
+
+                  <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 700 }}>Предыдущие клиенты</Typography>
+                  {relatedClients.length === 0 && (
+                    <Typography color="text.secondary">Нет совпадений</Typography>
+                  )}
+                  {relatedClients.map((client) => (
+                    <Box key={client.id} sx={{ mb: 1.5 }}>
+                      <Typography>{client.name}</Typography>
+                      <Typography color="text.secondary">{formatPhoneMask(client.phone || "")}</Typography>
+                    </Box>
+                  ))}
                 </Paper>
               </Grid>
             </Grid>
