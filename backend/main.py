@@ -11,6 +11,7 @@ app = FastAPI()
 
 
 PHONE_REGEX = re.compile(r"^\+7\d{10}$")
+APPOINTMENT_STATUSES = {"waiting", "arrived", "absent", "confirmed"}
 
 
 def normalize_phone(phone: str | None):
@@ -398,6 +399,10 @@ def get_appointments(db: Session = Depends(get_db)):
 
 @app.post("/api/appointments")
 def create_appointment(data: dict, db: Session = Depends(get_db)):
+    status = data.get("status", "waiting")
+    if status not in APPOINTMENT_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid appointment status")
+
     client = get_or_create_client(
         db,
         data.get("client_name"),
@@ -409,6 +414,7 @@ def create_appointment(data: dict, db: Session = Depends(get_db)):
         appointment_time=datetime.fromisoformat(data["datetime"]),
         master_id=data.get("master_id"),
         service_id=data.get("service_id"),
+        status=status,
         client_id=client.id if client else None,
         price=data.get("price", 0),
         master_income=data.get("master_income", 0)
@@ -424,6 +430,10 @@ def update_appointment(appt_id: int, data: dict, db: Session = Depends(get_db)):
     if not appt:
         raise HTTPException(status_code=404)
 
+    status = data.get("status", appt.status or "waiting")
+    if status not in APPOINTMENT_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid appointment status")
+
     client = get_or_create_client(
         db,
         data.get("client_name"),
@@ -434,6 +444,7 @@ def update_appointment(appt_id: int, data: dict, db: Session = Depends(get_db)):
     appt.price = data.get("price", 0)
     appt.master_id = data.get("master_id")
     appt.service_id = data.get("service_id")
+    appt.status = status
     appt.client_id = client.id if client else appt.client_id
     appt.appointment_time = datetime.fromisoformat(data["datetime"])
 

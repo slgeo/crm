@@ -42,6 +42,7 @@ class Appointment(Base):
     client_id = Column(Integer, ForeignKey("clients.id"))
     branch_id = Column(Integer, ForeignKey("branches.id"))
     service_id = Column(Integer, ForeignKey("services.id"))
+    status = Column(String, default="waiting")
     service = relationship("Service")    
 
 class User(Base):
