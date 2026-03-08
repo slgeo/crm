@@ -57,6 +57,7 @@ export default function App() {
   const [positions, setPositions] = useState([]);
   const [services, setServices] = useState([]);
   const [serviceCategories, setServiceCategories] = useState([]);
+  const [selectedServiceCategoryFilter, setSelectedServiceCategoryFilter] = useState("all");
   const [clients, setClients] = useState([]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -171,6 +172,18 @@ export default function App() {
   useEffect(() => { loadData(); }, []);
 
   // ---------------- KPI ----------------
+
+  const filteredServices = services.filter((service) => {
+    if (selectedServiceCategoryFilter === "all") {
+      return true;
+    }
+
+    if (selectedServiceCategoryFilter === "uncategorized") {
+      return !service.category_id;
+    }
+
+    return service.category_id === Number(selectedServiceCategoryFilter);
+  });
 
   const totalRevenue = appointments.reduce(
     (s, a) => s + (a.price || 0), 0
@@ -699,20 +712,39 @@ export default function App() {
           
 		  {page==="services" && (
             <>
-              <Button
-                variant="contained"
-                sx={{ mb:2 }}
-                onClick={() => {
-                  setEditingServiceId(null);
-                  setNewService({ name: "", category_id: "", price: "", duration_minutes: 60 });
-                  setServiceDialogOpen(true);
-                }}
-              >
-                Добавить услугу
-              </Button>
+              <Box sx={{ mb: 2, display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
+                <FormControl sx={{ minWidth: 260 }}>
+                  <InputLabel id="service-category-filter-label">Категория</InputLabel>
+                  <Select
+                    labelId="service-category-filter-label"
+                    value={selectedServiceCategoryFilter}
+                    label="Категория"
+                    onChange={(e) => setSelectedServiceCategoryFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">Все категории</MenuItem>
+                    <MenuItem value="uncategorized">Без категории</MenuItem>
+                    {serviceCategories.map((category) => (
+                      <MenuItem key={category.id} value={String(category.id)}>
+                        {category.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setEditingServiceId(null);
+                    setNewService({ name: "", category_id: "", price: "", duration_minutes: 60 });
+                    setServiceDialogOpen(true);
+                  }}
+                >
+                  Добавить услугу
+                </Button>
+              </Box>
 
               <Grid container spacing={3}>
-                {services.map(service => (
+                {filteredServices.map(service => (
                   <Grid item xs={12} md={4} key={service.id}>
                     {(() => {
                       const serviceMasters = masters.filter((master) =>
