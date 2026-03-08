@@ -633,6 +633,8 @@ export default function App() {
               <CalendarView
                 masters={masters}
                 appointments={appointments}
+                services={services}
+                clients={clients}
                 handleDateClick={handleDateClick}
                 deleteAppointment={handleEventClick}
               />
