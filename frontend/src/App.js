@@ -33,6 +33,12 @@ import {
 import CalendarView from "./components/CalendarView";
 
 const drawerWidth = 240;
+const appointmentStatuses = [
+  { value: "waiting", label: "Ожидание" },
+  { value: "arrived", label: "Пришел" },
+  { value: "absent", label: "Не пришел" },
+  { value: "confirmed", label: "Подтвердил" }
+];
 
 export default function App() {
 
@@ -103,7 +109,8 @@ export default function App() {
     master_id: "",
     service_id: "",
     client_name: "",
-    client_phone: ""
+    client_phone: "",
+    status: "waiting"
   });
 
   const theme = createTheme({
@@ -357,7 +364,8 @@ export default function App() {
       master_id: info.resource?.id || "",
       service_id: "",
       client_name: "",
-      client_phone: ""
+      client_phone: "",
+      status: "waiting"
     });
 
     setDialogOpen(true);
@@ -383,7 +391,8 @@ export default function App() {
       master_id: event.master_id,
       service_id: event.service_id || "",
       client_name: eventClient?.name || "",
-      client_phone: eventClient?.phone ? formatPhoneMask(eventClient.phone) : ""
+      client_phone: eventClient?.phone ? formatPhoneMask(eventClient.phone) : "",
+      status: event.status || "waiting"
     });
 
     setDialogOpen(true);
@@ -398,7 +407,8 @@ export default function App() {
       master_id: newEvent.master_id,
       service_id: newEvent.service_id || null,
       client_name: newEvent.client_name,
-      client_phone: newEvent.client_phone ? normalizePhone(newEvent.client_phone) : null
+      client_phone: newEvent.client_phone ? normalizePhone(newEvent.client_phone) : null,
+      status: newEvent.status
     };
 
     if (editingId) {
@@ -946,63 +956,87 @@ export default function App() {
           </DialogTitle>
 
           <DialogContent>
-            <TextField fullWidth margin="dense" label="Название"
-              value={newEvent.title}
-              onChange={(e)=>setNewEvent({...newEvent,title:e.target.value})}
-              InputProps={{ readOnly: !editingId }}
-            />
+            <Grid container spacing={2} sx={{ mt: 0.5, minWidth: { xs: 300, md: 700 } }}>
+              <Grid item xs={12} md={7}>
+                <TextField fullWidth margin="dense" label="Название"
+                  value={newEvent.title}
+                  onChange={(e)=>setNewEvent({...newEvent,title:e.target.value})}
+                  InputProps={{ readOnly: !editingId }}
+                />
 
-            <TextField fullWidth margin="dense"
-              label="Имя клиента"
-              value={newEvent.client_name}
-              onChange={(e)=>setNewEvent({...newEvent,client_name:e.target.value})}
-            />
+                <TextField fullWidth margin="dense" type="time"
+                  value={newEvent.time}
+                  onChange={(e)=>setNewEvent({...newEvent,time:e.target.value})}
+                />
 
-            <TextField fullWidth margin="dense"
-              label="Телефон клиента"
-              value={newEvent.client_phone}
-              onChange={(e)=>handleEventClientPhoneChange(e.target.value)}
-              placeholder="+7 (___) ___-__-__"
-            />
+                <TextField fullWidth margin="dense" type="number"
+                  label="Цена"
+                  value={newEvent.price}
+                  onChange={(e)=>setNewEvent({...newEvent,price:e.target.value})}
+                />
 
-            <TextField fullWidth margin="dense" type="time"
-              value={newEvent.time}
-              onChange={(e)=>setNewEvent({...newEvent,time:e.target.value})}
-            />
+                <FormControl fullWidth margin="dense">
+                  <InputLabel>Мастер</InputLabel>
+                  <Select
+                    value={newEvent.master_id}
+                    label="Мастер"
+                    onChange={(e)=>handleMasterChange(e.target.value)}
+                  >
+                    {masters.map(m=>(
+                      <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
 
-            <TextField fullWidth margin="dense" type="number"
-              label="Цена"
-              value={newEvent.price}
-              onChange={(e)=>setNewEvent({...newEvent,price:e.target.value})}
-            />
+                {newEvent.master_id && (
+                  <FormControl fullWidth margin="dense">
+                    <InputLabel>Услуга</InputLabel>
+                    <Select
+                      value={newEvent.service_id}
+                      label="Услуга"
+                      onChange={(e)=>handleServiceChange(e.target.value)}
+                    >
+                      {selectedMasterServices.map((service)=>(
+                        <MenuItem key={service.id} value={service.id}>{service.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              </Grid>
 
-            <FormControl fullWidth margin="dense">
-              <InputLabel>Мастер</InputLabel>
-              <Select
-                value={newEvent.master_id}
-                label="Мастер"
-                onChange={(e)=>handleMasterChange(e.target.value)}
-              >
-                {masters.map(m=>(
-                  <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+              <Grid item xs={12} md={5}>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: "100%" }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                    Клиент
+                  </Typography>
+                  <TextField fullWidth margin="dense"
+                    label="Имя клиента"
+                    value={newEvent.client_name}
+                    onChange={(e)=>setNewEvent({...newEvent,client_name:e.target.value})}
+                  />
 
-            {newEvent.master_id && (
-              <FormControl fullWidth margin="dense">
-                <InputLabel>Услуга</InputLabel>
-                <Select
-                  value={newEvent.service_id}
-                  label="Услуга"
-                  onChange={(e)=>handleServiceChange(e.target.value)}
-                >
-                  {selectedMasterServices.map((service)=>(
-                    <MenuItem key={service.id} value={service.id}>{service.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
+                  <TextField fullWidth margin="dense"
+                    label="Телефон клиента"
+                    value={newEvent.client_phone}
+                    onChange={(e)=>handleEventClientPhoneChange(e.target.value)}
+                    placeholder="+7 (___) ___-__-__"
+                  />
+
+                  <FormControl fullWidth margin="dense">
+                    <InputLabel>Статус</InputLabel>
+                    <Select
+                      value={newEvent.status}
+                      label="Статус"
+                      onChange={(e)=>setNewEvent({...newEvent,status:e.target.value})}
+                    >
+                      {appointmentStatuses.map((status) => (
+                        <MenuItem key={status.value} value={status.value}>{status.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Paper>
+              </Grid>
+            </Grid>
           </DialogContent>
 
           <DialogActions>
