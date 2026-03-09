@@ -1211,15 +1211,7 @@ export default function App() {
               label="Должность"
               value={newMaster.position}
               onChange={(e)=>setNewMaster({...newMaster,position:e.target.value})}
-              select
-            >
-              <MenuItem value="">Не выбрано</MenuItem>
-              {positions.map(position => (
-                <MenuItem key={position.id} value={position.name}>
-                  {position.name}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
 
             <FormControl fullWidth margin="dense">
               <InputLabel>Услуги</InputLabel>
